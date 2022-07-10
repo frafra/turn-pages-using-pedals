@@ -1,4 +1,5 @@
 extern crate midir;
+use evdev::{uinput::VirtualDeviceBuilder, AttributeSet, EventType, InputEvent, Key};
 
 use std::io::{stdin, stdout, Write};
 use std::error::Error;
@@ -43,9 +44,29 @@ fn run() -> Result<(), Box<dyn Error>> {
     println!("\nOpening connection");
     let in_port_name = midi_in.port_name(in_port)?;
 
+    let mut keys = AttributeSet::<Key>::new();
+    keys.insert(Key::KEY_DOWN);
+    keys.insert(Key::KEY_UP);
+    let mut device = VirtualDeviceBuilder::new()?
+        .name("pedals-remapped")
+        .with_keys(&keys)?
+        .build()
+        .unwrap();
+
     // _conn_in needs to be a named parameter, because it needs to be kept alive until the end of the scope
     let _conn_in = midi_in.connect(in_port, "midir-read-input", move |stamp, message, _| {
         println!("{}: {:?} (len = {})", stamp, message, message.len());
+        match message {
+            [176, 66, 127] => {
+                device.emit(&[InputEvent::new(EventType::KEY, Key::KEY_DOWN.code(), 1)]).unwrap();
+                device.emit(&[InputEvent::new(EventType::KEY, Key::KEY_DOWN.code(), 0)]).unwrap();
+            },
+            [176, 67, 127] => {
+                device.emit(&[InputEvent::new(EventType::KEY, Key::KEY_UP.code(), 1)]).unwrap();
+                device.emit(&[InputEvent::new(EventType::KEY, Key::KEY_UP.code(), 0)]).unwrap();
+            },
+            _ => {},
+        }
     }, ())?;
     
     println!("Connection open, reading input from '{}' (press enter to exit) ...", in_port_name);
