@@ -1,0 +1,9 @@
+[package]
+name = "turn-pages-using-pedals"
+version = "0.1.0"
+authors = ["Francesco Frassinelli <fraph24@gmail.com>"]
+edition = "2021"
+license = "MIT"
+
+[dependencies]
+midir = "0.8.0"
